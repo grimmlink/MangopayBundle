@@ -1,5 +1,5 @@
 {
-    "name": "troopers/mangopay-bundle",
+    "name": "grimmlink/mangopay-bundle",
     "type": "symfony-bundle",
     "description": "This Bundle include Mangopay php sdk as a service",
     "keywords": ["mangopay"],
@@ -10,6 +10,9 @@
         {
             "name": "Paul Andrieux",
             "homepage": "https://troopers.agency"
+        },
+        {
+            "name": "Guillaume Fremont"
         }
     ],
     "require": {
