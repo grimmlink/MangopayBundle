@@ -51,6 +51,7 @@ services:
         class: "%troopers_mangopay.payment_helper.class%"
         arguments:
             - "@troopers_mangopay.mango_api"
+            - "@troopers_mangopay.card_registration_helper"
             - "@router"
             - "@event_dispatcher"
 

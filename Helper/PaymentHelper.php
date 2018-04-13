@@ -9,12 +9,15 @@ use MangoPay\PayIn;
 use MangoPay\PayInExecutionDetailsDirect;
 use MangoPay\PayInPaymentDetailsPreAuthorized;
 use MangoPay\User;
+use MangoPay\Refund;
 use MangoPay\Wallet;
 use Symfony\Bundle\FrameworkBundle\Routing\Router;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Troopers\MangopayBundle\Entity\CardPreAuthorisation;
 use Troopers\MangopayBundle\Entity\Order;
 use Troopers\MangopayBundle\Entity\UserInterface;
+use Troopers\MangopayBundle\Entity\TransactionInterface;
 use Troopers\MangopayBundle\Event\CardRegistrationEvent;
 use Troopers\MangopayBundle\Event\PayInEvent;
 use Troopers\MangopayBundle\Event\PreAuthorisationEvent;
@@ -27,25 +30,21 @@ use Troopers\MangopayBundle\TroopersMangopayEvents;
 class PaymentHelper
 {
     protected $mangopayHelper;
+    protected $cardRegistrationHelper;
     protected $router;
     protected $dispatcher;
 
-    public function __construct(MangopayHelper $mangopayHelper, Router $router, EventDispatcherInterface $dispatcher)
+    public function __construct(MangopayHelper $mangopayHelper, CardRegistrationHelper $cardRegistrationHelper, Router $router, EventDispatcherInterface $dispatcher)
     {
         $this->mangopayHelper = $mangopayHelper;
+        $this->cardRegistrationHelper = $cardRegistrationHelper;
         $this->router = $router;
         $this->dispatcher = $dispatcher;
     }
 
     public function prepareCardRegistrationCallback(User $user, Order $order)
     {
-        $cardRegistration = new CardRegistration();
-        $cardRegistration->UserId = $user->Id;
-        $cardRegistration->Currency = 'EUR';
-        $mangoCardRegistration = $this->mangopayHelper->CardRegistrations->create($cardRegistration);
-
-        $event = new CardRegistrationEvent($cardRegistration);
-        $this->dispatcher->dispatch(TroopersMangopayEvents::NEW_CARD_REGISTRATION, $event);
+        $mangoCardRegistration = $this->cardRegistrationHelper->createCardRegistrationForUser($user, $order->getCurrency());
 
         $cardRegistrationURL = $mangoCardRegistration->CardRegistrationURL;
         $preregistrationData = $mangoCardRegistration->PreregistrationData;
@@ -113,7 +112,7 @@ class PaymentHelper
             [
                 'orderId' => $order->getId(),
             ],
-            true
+            UrlGeneratorInterface::ABSOLUTE_URL
         );
 
         $cardPreAuthorisation->CardId = $card->Id;
@@ -178,10 +177,7 @@ class PaymentHelper
         $event = new PayInEvent($payIn);
         $this->dispatcher->dispatch(TroopersMangopayEvents::ERROR_PAY_IN, $event);
 
-        throw new MangopayPayInCreationException($this->translator->trans(
-            'mangopay.error.'.$payIn->ResultCode,
-            [], 'messages'
-        ));
+        throw new MangopayPayInCreationException($this->translator->trans('mangopay.error.'.$payIn->ResultCode, [], 'messages'));
     }
 
     public function cancelPreAuthForOrder(Order $order, CardPreAuthorisation $preAuth)
@@ -199,5 +195,22 @@ class PaymentHelper
     public function generateSuccessUrl($orderId)
     {
         return $this->router->generate('troopers_mangopaybundle_payment_success', ['orderId' => $orderId]);
+    }
+
+    public function refund(TransactionInterface $payin, $amount = null) {
+        if (!$amount) {
+            $amount = $payin->getDebitedFunds();
+        }
+
+        $refund = $this->mangopayHelper->PayIns->CreateRefund($payin->getMangoId(), $amount);
+
+        if (property_exists($refund, 'Status') && $refund->Status != 'FAILED') {
+            $event = new RefundEvent($refund);
+            $this->dispatcher->dispatch(TroopersMangopayEvents::NEW_REFUND, $event);
+
+            return $refund;
+        }
+
+        throw new MangopayPayInCreationException($this->translator->trans('mangopay.error.'.$refund->ResultCode, [], 'messages'));
     }
 }

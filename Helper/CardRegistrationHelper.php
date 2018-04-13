@@ -3,9 +3,11 @@
 namespace Troopers\MangopayBundle\Helper;
 
 use Doctrine\ORM\EntityManager;
-use MangoPay\CardRegistration;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Troopers\MangopayBundle\Entity\UserInterface;
+use MangoPay\CardRegistration;
+use MangoPay\User;
+use Troopers\MangopayBundle\Event\CardRegistrationEvent;
+use Troopers\MangopayBundle\TroopersMangopayEvents;
 
 /**
  * ref: troopers_mangopay.card_registration_helper.
@@ -23,14 +25,16 @@ class CardRegistrationHelper
         $this->dispatcher = $dispatcher;
     }
 
-    public function createCardRegistrationForUser(UserInterface $user)
+    public function createCardRegistrationForUser(User $user, $currency = 'EUR')
     {
         $cardRegistration = new CardRegistration();
-        $cardRegistration->userId = $user->getMangoUserId();
-        $cardRegistration->Tag = 'user id : '.$user->getId();
-        $cardRegistration->Currency = 'EUR';
+        $cardRegistration->UserId = $user->Id;
+        $cardRegistration->Currency = $currency;
 
         $cardRegistration = $this->mangopayHelper->CardRegistrations->Create($cardRegistration);
+
+        $event = new CardRegistrationEvent($cardRegistration);
+        $this->dispatcher->dispatch(TroopersMangopayEvents::NEW_CARD_REGISTRATION, $event);
 
         return $cardRegistration;
     }

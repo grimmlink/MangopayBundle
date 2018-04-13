@@ -48,4 +48,9 @@ final class TroopersMangopayEvents
      * The ERROR_PAY_IN event occurs when a apyin is errored.
      */
     const ERROR_PAY_IN = 'troopers_mangopay.pay_in.error';
+
+    /**
+     * The NEW_REFUND event occurs when a refund is created.
+     */
+    const NEW_REFUND = 'troopers_mangopay.refund.new';
 }

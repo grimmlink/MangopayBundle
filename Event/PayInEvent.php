@@ -8,7 +8,6 @@ use Symfony\Component\EventDispatcher\Event;
 class PayInEvent extends Event
 {
     private $payIn;
-    private $preAuth;
 
     public function __construct(PayIn $payIn)
     {
@@ -22,7 +21,7 @@ class PayInEvent extends Event
      */
     public function getPayin()
     {
-        return $this->payin;
+        return $this->payIn;
     }
 
     /**
@@ -34,7 +33,7 @@ class PayInEvent extends Event
      */
     public function setPayin($payin)
     {
-        $this->payin = $payin;
+        $this->payIn = $payin;
 
         return $this;
     }
